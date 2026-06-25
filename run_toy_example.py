@@ -17,7 +17,9 @@ Repository: https://github.com/Hanyang-HCC-Lab/ICE
 """
 
 import argparse
+import ast
 import json
+import os
 
 import torch
 import numpy as np
@@ -34,6 +36,24 @@ BACKGROUND_CLASS_INDEX = 1000  # 1001. Ausgabe des mlp_head (Index 1000)
 NORM_MEAN = 0.5
 NORM_STD = 0.5
 
+# Standardpfade, falls keine Argumente uebergeben werden
+DEFAULT_IMAGE = "images/image.png"
+DEFAULT_CHECKPOINT = "checkpoint/0_checkpoint.pth"
+IDX_TO_CLASS_FILE = "idx_to_class.txt"
+
+
+def load_idx_to_class(path=IDX_TO_CLASS_FILE):
+    """Laedt die Zuordnung von ImageNet-Index zu Klassennamen aus einer
+    Datei, die ein Python-Dict-Literal enthaelt. Gibt None zurueck, wenn die
+    Datei nicht vorhanden oder nicht lesbar ist."""
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return ast.literal_eval(f.read())
+    except (ValueError, SyntaxError):
+        return None
+
 
 def load_image_tensor(path):
     """Laedt ein Bild, skaliert es auf 224x224 und normalisiert es,
@@ -47,14 +67,19 @@ def load_image_tensor(path):
 
 def build_model(checkpoint_path):
     model = deit_small_patch16_224(num_classes=1000, img_size=IMG_SIZE)
-    if checkpoint_path is not None:
-        state = torch.load(checkpoint_path, map_location="cpu")
+    if checkpoint_path is not None and os.path.exists(checkpoint_path):
+        # weights_only=False ist noetig, da der Checkpoint der Autoren neben
+        # den Gewichten auch die Trainings-Argumente (argparse.Namespace)
+        # enthaelt. Nur fuer vertrauenswuerdige Checkpoints verwenden.
+        state = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
         state_dict = state["model"] if "model" in state else state
         missing, unexpected = model.load_state_dict(state_dict, strict=False)
         print(f"Checkpoint geladen: {checkpoint_path}")
         print(f"  fehlende Schluessel: {len(missing)}, unerwartete Schluessel: {len(unexpected)}")
     else:
-        print("Kein Checkpoint angegeben, Modell verwendet zufaellig initialisierte Gewichte "
+        if checkpoint_path is not None:
+            print(f"Checkpoint nicht gefunden unter: {checkpoint_path}")
+        print("Kein Checkpoint geladen, Modell verwendet zufaellig initialisierte Gewichte "
               "(nur fuer einen strukturellen Test des Codes geeignet, nicht fuer eine "
               "inhaltliche Auswertung).")
     model.eval()
@@ -106,8 +131,8 @@ def save_overlay(original_img, heatmap, output_path):
 
 def main():
     parser = argparse.ArgumentParser(description="ICE Toy Example: Einzelbild-Inferenz")
-    parser.add_argument("--image", required=True, help="Pfad zum Eingabebild")
-    parser.add_argument("--checkpoint", default=None, help="Pfad zum ICE-Checkpoint (0_checkpoint.pth)")
+    parser.add_argument("--image", default=DEFAULT_IMAGE, help="Pfad zum Eingabebild")
+    parser.add_argument("--checkpoint", default=DEFAULT_CHECKPOINT, help="Pfad zum ICE-Checkpoint (0_checkpoint.pth)")
     parser.add_argument("--output", default="results/heatmap.png", help="Pfad fuer die Overlay-Ausgabe")
     parser.add_argument("--metrics-out", default=None, help="Optional: Pfad fuer eine JSON-Datei mit Kennzahlen")
     args = parser.parse_args()
@@ -118,7 +143,16 @@ def main():
 
     overlay_path, mask_path = save_overlay(original_img, result["heatmap"], args.output)
 
-    print(f"Vorhergesagte Klasse (ImageNet-Index): {result['predicted_class']}")
+    idx_to_class = load_idx_to_class()
+    predicted_label = None
+    if idx_to_class is not None:
+        predicted_label = idx_to_class.get(result["predicted_class"])
+
+    if predicted_label is not None:
+        print(f"Vorhergesagte Klasse (ImageNet-Index): {result['predicted_class']} "
+              f"({predicted_label})")
+    else:
+        print(f"Vorhergesagte Klasse (ImageNet-Index): {result['predicted_class']}")
     print(f"Patches im Vordergrund: {result['num_foreground_patches']} / {result['total_patches']} "
           f"({result['foreground_ratio']:.1%})")
     print(f"Overlay gespeichert unter: {overlay_path}")
@@ -128,6 +162,7 @@ def main():
         with open(args.metrics_out, "w") as f:
             json.dump({
                 "predicted_class": result["predicted_class"],
+                "predicted_label": predicted_label,
                 "num_foreground_patches": result["num_foreground_patches"],
                 "total_patches": result["total_patches"],
                 "foreground_ratio": result["foreground_ratio"],
