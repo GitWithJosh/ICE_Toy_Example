@@ -1,89 +1,66 @@
 # ICE Toy Example
 
-Dieser Ordner enthaelt eine lauffaehige, eigenstaendige Umsetzung des in
-Kapitel 5.5 der Seminararbeit beschriebenen Toy Examples fuer ICE
-(Adversarial Normalization: I Can Visualize Everything, Choi et al., 2023).
+Eigenstaendige, lauffaehige Umsetzung des Toy Examples fuer ICE
+(Adversarial Normalization: I Can Visualize Everything, Choi et al., CVPR 2023),
+beschrieben in Kapitel 5.5 der Seminararbeit.
 
 ## Inhalt
 
-- `models_ICE.py`: eigenstaendige Neuimplementierung der ICE-Modellklasse
-  (DeiT-Small-Backbone mit zusaetzlichem patchweisem Klassifikationskopf,
-  1001 Ausgaben = 1000 ImageNet-Klassen + 1 Hintergrundklasse). Funktional
-  identisch zur Modellklasse aus dem offiziellen Repository
-  (https://github.com/Hanyang-HCC-Lab/ICE, MIT-Lizenz), aber ohne
-  Abhaengigkeit von der timm-Bibliothek, damit der Code mit minimalen
-  Voraussetzungen lauffaehig ist. Der vortrainierte Checkpoint laedt mit
-  dieser Implementierung ohne fehlende oder unerwartete Schluessel
-  (siehe unten), was die strukturelle Korrektheit bestaetigt.
-- `run_toy_example.py`: Inferenzskript fuer ein einzelnes Bild. Laedt
-  Modell und Checkpoint, fuehrt die patchweise Klassifikation durch und
-  erzeugt eine Vordergrund/Hintergrund-Heatmap nach dem in der Arbeit
-  beschriebenen Verfahren (Argmax ueber 1001 Klassen pro Patch,
-  Hintergrundklasse = Index 1000).
-- `requirements.txt`: minimale Abhaengigkeiten (torch, numpy, Pillow).
-- `checkpoint/0_checkpoint.pth`: der vortrainierte ICE-Checkpoint der
-  Autoren (DeiT-Small-Backbone).
-- `images/`: drei reale Testfotos von Lebensmitteln vor einfarbigem
-  Hintergrund (`avocado.jpg`, `cherry.jpg`, `chili.jpg`).
-- `results/`: Ausgaben der tatsaechlich durchgefuehrten Testlaeufe fuer
-  alle drei Bilder (Overlay-Heatmap, binaere Maske, JSON-Kennzahlen je
-  Bild).
+- `models_ICE.py` – eigenstaendige Neuimplementierung der ICE-Modellklasse
+  (DeiT-Small-Backbone + patchweiser Klassifikationskopf, 1001 Ausgaben =
+  1000 ImageNet-Klassen + 1 Hintergrundklasse), ohne timm-Abhaengigkeit
+- `run_toy_example.py` – Inferenzskript fuer ein einzelnes Bild
+- `make_val_grids_v2.py` – Auswertungsskript fuer die ILSVRC2012-Validierungsbilder
+  (erzeugt val_binary_grid.png, val_class_grid.png und Metrik-JSONs)
+- `requirements.txt` – minimale Abhaengigkeiten (torch, numpy, Pillow)
+- `checkpoint/0_checkpoint.pth` – vortrainierter ICE-Checkpoint der Autoren
+  (DeiT-Small, bereitgestellt ueber Google Drive; s. Seminararbeit Fussnote)
 
-## Tatsaechlich durchgefuehrter Testlauf
+### images/
 
-Mit dem echten Checkpoint wurde `run_toy_example.py` fuer alle drei
-Testbilder erfolgreich ausgefuehrt, zum Beispiel:
+| Unterordner                | Inhalt                                              |
+|----------------------------|-----------------------------------------------------|
+| `imagenet_validation/`     | 3 ILSVRC2012-Validierungsbilder + XML-Annotationen  |
+| `multiple_objects_in_image/` | 2 ImageNet-Bilder mit mehreren Objekten (Exploration) |
+| `avocado.jpg` etc.         | Unsplash-Fotos (Exploration, keine GT verfuegbar)   |
 
-```
-python run_toy_example.py --image images/avocado.jpg \
+### results/
+
+| Unterordner          | Inhalt                                                        |
+|----------------------|---------------------------------------------------------------|
+| `imagenet/`          | Hauptergebnisse: val_binary_grid.png, val_class_grid.png, JSON-Metriken |
+| `unsplash/`          | Ergebnisse der Unsplash-Vorversuche                          |
+| `multiple_objects_in_image/` | Ergebnisse der Multi-Objekt-Exploration              |
+
+## Hauptergebnisse (ILSVRC2012-Validierungsdaten)
+
+| Bild          | GT-Klasse | Vorhersage       | FG-Patches   | P    | R    | IoU  |
+|---------------|-----------|------------------|--------------|------|------|------|
+| val_00000067  | 101 Tusker | 101 Tusker ✓    | 52/196 (27%) | 0,99 | 0,42 | 0,42 |
+| val_00000075  | 83 Black Grouse | 80 Partridge ✗ | 40/196 (20%) | 0,88 | 0,62 | 0,57 |
+| val_00000123  | 852 Tennis Ball | 852 Tennis Ball ✓ | 49/196 (25%) | 0,96 | 0,81 | 0,78 |
+
+Metriken auf Pixelebene, angelehnt an `get_per_sample_jaccard()` aus dem offiziellen
+ICE-Repository. Nicht direkt mit den Paper-Ergebnissen vergleichbar (224x224 statt
+512x512, Bounding Boxes statt pixelgenauer Segmentierungsmasken). Details: findings.md
+
+## Schnellstart
+
+```bash
+pip install -r requirements.txt
+
+# Einzelbild
+python run_toy_example.py \
+    --image images/imagenet_validation/ILSVRC2012_val_00000067.jpeg \
     --checkpoint checkpoint/0_checkpoint.pth \
-    --output results/avocado_heatmap.png \
-    --metrics-out results/avocado_metrics.json
+    --output results/out_heatmap.png
+
+# Validierungs-Grids + Metriken (alle 3 Bilder)
+python make_val_grids_v2.py
 ```
 
-Ergebnis fuer alle drei Bilder:
+## Quellen
 
-- Der Checkpoint wurde in jedem Lauf ohne fehlende oder unerwartete
-  Schluessel geladen (`fehlende Schluessel: 0, unerwartete Schluessel: 0`),
-  was bestaetigt, dass die hier verwendete Modellklasse exakt der
-  Architektur entspricht, mit der der Checkpoint trainiert wurde.
-
-| Bild    | Vorhergesagte ImageNet-Klasse | Vordergrund-Patches |
-|---------|-------------------------------|----------------------|
-| avocado | 952                           | 20 / 196 (10,2 %)    |
-| cherry  | 951                           | 19 / 196 (9,7 %)     |
-| chili   | 939                           | 19 / 196 (9,7 %)     |
-
-Die erzeugten Heatmaps (`results/<name>_heatmap.png`) zeigen in allen drei
-Faellen, dass die als Vordergrund erkannten Patches ueberwiegend auf dem
-jeweils abgebildeten Lebensmittel liegen, also dem einzigen klar
-abgegrenzten Objekt im Bild. Vereinzelt wurde dabei auch ein bis zwei
-isolierte Patches außerhalb des Objekts als Vordergrund erkannt (zum
-Beispiel am Bildrand), was angesichts des einfarbigen, aber nicht
-vollstaendig homogenen Hintergrunds der Fotos plausibel ist. Die binaeren
-Masken (`results/<name>_heatmap_mask.png`) zeigen diese Aufteilung in
-Schwarz und Weiss.
-
-Dieses Ergebnis bestaetigt, dass die patchweise Klassifikation von ICE
-tatsaechlich zwischen einem klar abgegrenzten Objekt und seinem
-Hintergrund unterscheidet, auch wenn die verwendeten Fotos nicht aus dem
-ImageNet-Trainingsdatensatz stammen, fuer den der Checkpoint trainiert
-wurde, und auch wenn die vorhergesagten ImageNet-Klassen nicht in jedem
-Fall exakt der dargestellten Lebensmittelart entsprechen.
-
-## Eigene Bilder verwenden
-
-Um das Beispiel mit einem weiteren eigenen Foto zu wiederholen:
-
-1. Ein Bild mit einem klar erkennbaren Objekt nach `images/` legen.
-2. Skript ausfuehren:
-   ```
-   python run_toy_example.py --image images/<ihr_bild>.jpg \
-       --checkpoint checkpoint/0_checkpoint.pth \
-       --output results/<name>_heatmap.png \
-       --metrics-out results/<name>_metrics.json
-   ```
-3. Das Skript gibt die vorhergesagte ImageNet-Klasse sowie den Anteil der
-   Patches im Vordergrund aus und speichert ein Overlay-Bild
-   (`<name>_heatmap.png`) sowie eine binaere Maske
-   (`<name>_heatmap_mask.png`).
+- ICE Paper: Choi et al., CVPR 2023 – https://doi.org/10.1109/CVPR52729.2023.01166
+- Offizielles Repository: https://github.com/Hanyang-HCC-Lab/ICE (MIT-Lizenz)
+- ILSVRC2012-Validierungsdaten: https://www.kaggle.com/competitions/imagenet-object-localization-challenge/data
