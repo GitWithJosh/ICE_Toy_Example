@@ -26,15 +26,14 @@ Abweichungen: 224x224 statt 512x512, Bounding Boxes statt pixelgenauer Segmentie
   Niedrigerer Recall (0,42): Bounding Box deckt ~62 % der Bildflaeche ab, Modell ist
   konservativer als die Box.
 
-### val_00000075 – Birkhuhn (GT: Black Grouse, Klasse 83)
+### val_00000075 – Birkhuhn (GT: Black Grouse, Klasse 80)
 
-- Vorhergesagte Klasse: 80 (Rebhuhn/Partridge) ✗ (aber nah verwandt)
+- Vorhergesagte Klasse: 80 (Black Grouse) ✓
 - Vordergrund-Patches: 40 / 196 (20,4 %)
 - Metriken: P=0,88  R=0,62  IoU=0,57
 - Vordergrund-Klassen: nur 80 (vollstaendig konsistent)
-- Beobachtung: Klassifikationsfehler zwischen zwei nah verwandten Huehnervogel-Arten.
-  Lokalisierung der Vogelregion gelingt trotzdem plausibel (IoU=0,57).
-  Alle Patches einheitlich einer Klasse zugeordnet.
+- Beobachtung: Korrekte Klassifikation. Alle 40 Vordergrundpatches einheitlich
+  Klasse 80 zugeordnet – besonders kohaerente patchweise Zuordnung (IoU=0,57).
 
 ### val_00000123 – Tennisbaelle (GT: Tennis Ball, Klasse 852, 3 Instanzen)
 

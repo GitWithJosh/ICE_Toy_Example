@@ -35,7 +35,7 @@ PALETTE = [
 # Synset → ImageNet class index (standard ILSVRC2012 mapping)
 SYNSET_TO_IDX = {
     'n01871265': 101,  # tusker
-    'n01795545': 83,   # black grouse
+    'n01795545': 80,   # black grouse
     'n04409515': 852,  # tennis ball
 }
 

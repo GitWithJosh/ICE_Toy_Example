@@ -37,7 +37,7 @@ beschrieben in Kapitel 5.5 der Seminararbeit.
 | Bild          | GT-Klasse | Vorhersage       | FG-Patches   | P    | R    | IoU  |
 |---------------|-----------|------------------|--------------|------|------|------|
 | val_00000067  | 101 Tusker | 101 Tusker ✓    | 52/196 (27%) | 0,99 | 0,42 | 0,42 |
-| val_00000075  | 83 Black Grouse | 80 Partridge ✗ | 40/196 (20%) | 0,88 | 0,62 | 0,57 |
+| val_00000075  | 80 Black Grouse | 80 Black Grouse ✓ | 40/196 (20%) | 0,88 | 0,62 | 0,57 |
 | val_00000123  | 852 Tennis Ball | 852 Tennis Ball ✓ | 49/196 (25%) | 0,96 | 0,81 | 0,78 |
 
 Metriken auf Pixelebene, angelehnt an `get_per_sample_jaccard()` aus dem offiziellen
